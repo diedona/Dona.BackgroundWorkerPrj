@@ -15,8 +15,7 @@ namespace Donah.BackgroundWorkerPrj.WindowsForms
 {
     public partial class Form1 : Form
     {
-        private ThreadController Thread1Controller = null;
-        private ThreadController Thread2Controller = null;
+        private ThreadController ThreadController = null;
         private BackgroundWorker Thread1 = null;
         private BackgroundWorker Thread2 = null;
 
@@ -24,8 +23,7 @@ namespace Donah.BackgroundWorkerPrj.WindowsForms
         {
             InitializeComponent();
 
-            Thread1Controller = new ThreadController();
-            Thread2Controller = new ThreadController();
+            ThreadController = new ThreadController();
 
             StartThread1();
         }
@@ -40,26 +38,40 @@ namespace Donah.BackgroundWorkerPrj.WindowsForms
             Thread1.WorkerSupportsCancellation = true;
 
             Thread1.RunWorkerAsync();
-            Thread1Controller.ThreadOne.StartThread();
+            ThreadController.ThreadOne.StartThread();
+        }
+
+        private void StartThread2()
+        {
+            Thread2 = new BackgroundWorker();
+            Thread2.DoWork += new DoWorkEventHandler(Thread2_DoWork);
+            Thread2.ProgressChanged += new ProgressChangedEventHandler(Thread2_ProgressChanged);
+            Thread2.RunWorkerCompleted += new RunWorkerCompletedEventHandler(Thread2_RunWorkerCompleted);
+            Thread2.WorkerReportsProgress = true;
+            Thread2.WorkerSupportsCancellation = true;
+
+            Thread2.RunWorkerAsync();
+            ThreadController.ThreadTwo.StartThread();
         }
 
         #region THREAD 1
+
         void Thread1_DoWork(object sender, DoWorkEventArgs e)
         {
             //IF E.ARGUMENT IS TRUE, THEN IT SHOULD WAIT (SEE Thread1_RunWorkerCompleted)
-            if(e.Argument != null && Convert.ToBoolean(e.Argument))
+            if (e.Argument != null && Convert.ToBoolean(e.Argument))
             {
                 Thread.Sleep(2000);
             }
-            
+
             int count = 0;
             do
             {
                 //SET STATUS
-                Thread1Controller.ThreadOne.SetThreadWaiting();
+                ThreadController.ThreadOne.SetThreadExecuting();
 
                 //DO MAIN WORK HERE
-                for(int i = 0; i < 11; i++)
+                for (int i = 0; i < 11; i++)
                 {
                     //YOU CAN SEND ANY OBJECT HERE FOR THE PROGRESS 
                     Thread1.ReportProgress(i, true);
@@ -68,7 +80,7 @@ namespace Donah.BackgroundWorkerPrj.WindowsForms
                 }
 
                 //SIMULATING A BREAKING CONDITION FOR THE MAIN WORK
-                if(count >= 1)
+                if (count >= 1)
                 {
                     break;
                 }
@@ -79,13 +91,14 @@ namespace Donah.BackgroundWorkerPrj.WindowsForms
                 Thread1.ReportProgress(0, false);
 
                 //THE MAIN WORK HAS ENDED, PUT THE THREAD TO "SLEEP"
-                Thread1Controller.ThreadOne.SetThreadWaiting();
+                ThreadController.ThreadOne.SetThreadWaiting();
                 Thread.Sleep(2000);
             } while (true);
         }
+
         private void Thread1_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            if (Convert.ToBoolean(e.UserState))            
+            if (Convert.ToBoolean(e.UserState))
             {
                 lblThread1Status.Text = "Thread 1 Status: Executing (" + e.ProgressPercentage.ToString() + ")";
             }
@@ -94,9 +107,10 @@ namespace Donah.BackgroundWorkerPrj.WindowsForms
                 lblThread1Status.Text = "Thread 1 Status: SLEEPING";
             }
         }
+
         private void Thread1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            Thread1Controller.ThreadOne.StopThread();
+            ThreadController.ThreadOne.StopThread();
             lblThread1Status.Text = "Thread 1 Status: DEAD";
 
             //CALL IT AGAIN, BUT TELLS IT TO WAIT
@@ -107,26 +121,61 @@ namespace Donah.BackgroundWorkerPrj.WindowsForms
         {
             Thread1.RunWorkerAsync();
         }
+
         #endregion
 
         #region THREAD 2
+
         void Thread2_DoWork(object sender, DoWorkEventArgs e)
         {
+            //SET STATUS
+            ThreadController.ThreadTwo.SetThreadExecuting();
 
+            //DO MAIN WORK HERE
+            for (int i = 0; i < 11; i++)
+            {
+                //YOU CAN SEND ANY OBJECT HERE FOR THE PROGRESS 
+                Thread2.ReportProgress(i, true);
+                //TIMEOUT
+                Thread.Sleep(500);
+            }
         }
+
         private void Thread2_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-
+            if (Convert.ToBoolean(e.UserState))
+            {
+                lblThread2Status.Text = "Thread 2 Status: Executing (" + e.ProgressPercentage.ToString() + ")";
+            }
+            else
+            {
+                lblThread2Status.Text = "Thread 2 Status: SLEEPING";
+            }
         }
+
         private void Thread2_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
+            ThreadController.ThreadTwo.StopThread();
+            lblThread2Status.Text = "Thread 2 Status: DEAD";
+        }
 
-        } 
         #endregion
 
         private void btnForceThread2_Click(object sender, EventArgs e)
         {
-
+            if (ThreadController.ThreadOne.IsExecuting)
+            {
+                MessageBox.Show("You can't start this operation while thread 1 is executing!");
+            }
+            else if(ThreadController.ThreadTwo.IsExecuting)
+            {
+                MessageBox.Show("You can't repeat this operation. Thread 2 is already executing!");
+            }
+            else
+            {
+                //MessageBox.Show("YES U CAN");
+                StartThread2();
+            }
         }
     }
 }
